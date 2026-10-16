@@ -1,4 +1,4 @@
-import numpy as np
+﻿import numpy as np
 from langchain_core.documents import Document
 from langchain_ollama.llms import OllamaLLM
 from langchain_core.prompts import ChatPromptTemplate
@@ -9,10 +9,11 @@ from vertorize import retriever
 # model = OllamaLLM(model="llama2"
 model = OllamaLLM(model="llama3.2:3b")
 
-def main():
+def build_chain():
 
     template = """
         You are an technical expert. Use ONLY the following script excerpts to answer.
+        If you recognize a formular, give the answer in LaTeX format.
         If the answer isn't in the context, say "There is no information about this in the original Study scripts."
 
         Context:
@@ -34,6 +35,11 @@ def main():
         | StrOutputParser()
     )
 
+    return chain
+
+
+def main():
+    chain = build_chain()
     print("\n--- The Study Expert is ready to answer your questions ---")
 
     while True:
