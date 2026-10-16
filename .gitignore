@@ -1,0 +1,7 @@
+# Ignore Folders:
+venv
+chroma_dp
+
+# Ignore Files:
+*.pdf
+Fragensammlung.txt
