@@ -1,0 +1,2 @@
+This is the folder where the vector-database will be saved.
+If you want to analyse new PDFs -> delete all the files in this folder.
