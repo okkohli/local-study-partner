@@ -4,6 +4,9 @@ A small, fully local **Retrieval-Augmented Generation (RAG)** application. It in
 
 Everything runs on your own machine: no API keys, no cloud services, no data leaving your computer.
 
+**Usage:**
+If you want to have precise answers directly from a specific document, without additional hallucination from outside, or if you have sensitive documents that should be not uploaded to online LLMs.
+
 ---
 
 ## Table of Contents
