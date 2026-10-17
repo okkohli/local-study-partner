@@ -48,7 +48,7 @@ INDEXING (first run only)
  OllamaEmbeddings (mxbai-embed-large)
        │
        ▼
- Chroma vector store  ──►  ./chroma_dp/  (persisted on disk)
+ Chroma vector store  ──►  ./chroma_chapters/  (persisted on disk)
 
 
 QUESTION ANSWERING (every query)
@@ -89,7 +89,7 @@ chain = (
 ├── main.py            # CLI chat application (prompt, LLM, chain, input loop)
 ├── vertorize.py       # Document ingestion, embedding, vector store, retriever
 ├── materials/         # Put your PDF study scripts here (you create this folder)
-└── chroma_dp/         # Chroma database, created automatically on first run
+└── chroma_chapters/         # Chroma database, created automatically on first run
 ```
 
 | File | Responsibility |
@@ -402,7 +402,7 @@ With your virtual environment activated, start the command-line interface:
 python main.py
 ```
 
-**First run:** the app finds no database, so it loads every PDF, splits it, embeds all chunks and stores them in `./chroma_dp`. Depending on the amount of material this can take from seconds to several minutes. You will see output like:
+**First run:** the database folder is missing or empty, so it loads every PDF, splits it, embeds all chunks and stores them in `./chroma_chapters`. Depending on the amount of material this can take from seconds to several minutes. You will see output like:
 
 ```
 Adding documents to database...
@@ -415,10 +415,10 @@ Documents added to database.
 You:
 ```
 
-**Later runs:** the database already exists, so indexing is skipped and the app starts immediately:
+**Later runs:** the database folder contains files, so all PDF processing is skipped, including any newly added PDFs:
 
 ```
-Database already exists. Skipping document loading.
+Database folder is not empty: ./chroma_chapters. Skipping PDF processing.
 ```
 
 **Asking questions:**
@@ -501,7 +501,7 @@ All settings are plain constants in the code.
 | Setting | Default | Meaning |
 |---|---|---|
 | `MATERIALS_FOLDER` | `"./materials"` | Folder scanned for `*.pdf` files |
-| `DB_PATH` | `"./chroma_dp"` | Directory where Chroma persists its data |
+| `DB_PATH` | `"./chroma_chapters"` | Directory where Chroma persists its data |
 | Embedding model | `mxbai-embed-large` | Ollama model used to create vectors |
 | Collection name | `study_materials` | Chroma collection holding the chunks |
 | `chunk_size` | `2500` | Maximum characters per chunk |
@@ -529,7 +529,7 @@ All settings are plain constants in the code.
 
 ### `vertorize.py` – ingestion and retrieval
 
-1. **Decide whether to index.** `add_documents = not os.path.exists(DB_PATH)` – indexing only happens if the database folder does not exist yet.
+1. **Decide whether to index.** Before opening Chroma, check whether `DB_PATH` contains files. Index PDFs only when the folder is missing or empty.
 2. **Create embeddings and the vector store.** `OllamaEmbeddings` talks to Ollama; `Chroma` is opened with a persistent directory so data survives restarts.
 3. **Load PDFs.** `glob` finds all PDFs in `materials/`; `PyPDFLoader` returns one `Document` per page, including page metadata.
 4. **Split into chunks.** `RecursiveCharacterTextSplitter` splits on paragraphs, then lines, then words, to keep chunks semantically coherent.
@@ -549,14 +549,16 @@ The file also contains a commented-out **"variante-1"**: a splitter configured w
 
 ## Re-indexing Your Documents
 
-The indexing step is skipped whenever the `chroma_dp` folder exists. To rebuild the index – for example after adding PDFs, changing chunk settings, or switching the embedding model – delete the folder and start the app again:
+PDF processing is skipped whenever the database folder (`./chroma_chapters`, configured by `DB_PATH` in `vertorize.py`) is not empty. **To process a new PDF, stop the app and delete all files and subfolders inside the database folder so it is empty.** Then add the PDF to `materials/` and restart the app. All PDFs in `materials/` will be processed again.
+
+The same rebuild is required after changing chunk settings or the embedding model. Alternatively, delete the entire database folder before restarting:
 
 ```bash
 # Linux / macOS
-rm -rf chroma_dp
+rm -rf chroma_chapters
 
 # Windows (PowerShell)
-Remove-Item -Recurse -Force chroma_dp
+Remove-Item -Recurse -Force chroma_chapters
 
 python main.py
 ```
