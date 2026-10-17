@@ -1,0 +1,8 @@
+# Ignore Folders:
+venv
+chroma_dp
+.gitignore
+
+# Ignore Files:
+*.pdf
+Fragensammlung.txt
