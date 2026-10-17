@@ -13,7 +13,7 @@ from pathlib import Path
 
 import streamlit as st
 
-from main import build_chain
+from main import build_chain, format_source_summary
 
 
 @st.cache_resource
@@ -51,6 +51,8 @@ def main():
         st.session_state.rag_answer = ""
     if "rag_question" not in st.session_state:
         st.session_state.rag_question = ""
+    if "rag_sources" not in st.session_state:
+        st.session_state.rag_sources = ""
 
     input_column, output_column = st.columns(2)
 
@@ -67,8 +69,11 @@ def main():
         else:
             try:
                 with st.spinner("Searching your study materials and generating an answer..."):
-                    answer = get_chain().invoke(question)
+                    chain, text_extention = get_chain()
+                    query = question + text_extention
+                    answer = chain.invoke(query)
                 st.session_state.rag_answer = answer["answer"]
+                st.session_state.rag_sources = format_source_summary(answer["sources"])
                 st.session_state.rag_question = question
             except Exception as exc:
                 st.error(
@@ -85,6 +90,7 @@ def main():
         with st.container(height=450, border=True):
             if st.session_state.rag_answer:
                 st.markdown(format_answer(st.session_state.rag_answer))
+                st.text("------------------\nSources:\n" + st.session_state.rag_sources)
             else:
                 st.caption("Your answer will appear here.")
 
