@@ -10,6 +10,10 @@ from vertorize import retriever
 
 with Path(__file__).with_name("settings.json").open(encoding="utf-8") as file:
     settings = json.load(file)
+    
+settings["prompt_type"]["scientific"]["description"] = "\n".join(
+    settings["prompt_type"]["scientific"]["description"]
+)
 
 # model = OllamaLLM(model="llama2"
 model = OllamaLLM(model=settings["model"])
@@ -27,11 +31,10 @@ def build_chain():
 
         Answer:"""
 
-    prompt = ChatPromptTemplate.from_template(template).partial(
-        command="\n".join(settings["prompt_type"]["scientific"]["description"])
-    )
+    prompt = ChatPromptTemplate.from_template(template)
     chain = (
         {   
+            "command": settings["prompt_type"]["scientific"]["description"],
             "context": retriever,
             "question": RunnablePassthrough()
         }
