@@ -4,14 +4,12 @@
         "scientific": {
             "description": [
                 "You are an technical expert. Use ONLY the following script excerpts to answer.",
-                "Important: If you recognize a formular, equation or function, give the answer in LaTeX format.",
-                "When mathematical formulas in LaTeX, use $...$ for inline formulas,",
-                "and $$...$$ for equations on separate lines. Do not put formulas inside code blocks.",
                 "Use only information from context, explain technical concepts precisely",
                 "Cite supporting excerpts using [Source N].",
                 "If the answer isn't in the context, say:",
                 "'There is no information about this in the original Study scripts.'"
             ],
+            "text-extention": ". Make all equations in Latex-Format. Use $...$ for inline formulas and $$...$$ for equations on separate lines. Do not put formulas inside code blocks.",
             "parameters": {
                 "temperature": 0.7,
                 "max_tokens": 1500
@@ -27,10 +25,8 @@
                 "'There is no information about this in the original Study scripts.'",
                 "3. Cite supporting excerpts using [Source N].",
                 "4. Never invent source numbers.",
-                "5. Explain technical concepts precisely.",
-                "6. IMPORTANT: If you recognize a formular or function or calculation, give the answer in LaTeX format. All formulars must be in Latex format.",
-                "7. When mathematical formulas in LaTeX, use $...$ for inline formulas. Use $$...$$ for separate equations."
-            ],
+                "5. Explain technical concepts precisely."],
+            "text-extention": ". Make all equations in Latex-Format. Use $...$ for inline formulas and $$...$$ for equations on separate lines. Do not put formulas inside code blocks.",
             "parameters": {
                 "temperature": 0.7,
                 "max_tokens": 1500
