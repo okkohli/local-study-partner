@@ -68,7 +68,7 @@ def main():
             try:
                 with st.spinner("Searching your study materials and generating an answer..."):
                     answer = get_chain().invoke(question)
-                st.session_state.rag_answer = answer
+                st.session_state.rag_answer = answer["answer"]
                 st.session_state.rag_question = question
             except Exception as exc:
                 st.error(

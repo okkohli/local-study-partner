@@ -1,91 +1,112 @@
+
+import os
+import glob
+import hashlib
+
 from langchain_ollama import OllamaEmbeddings
 from langchain_chroma import Chroma
 from langchain_community.document_loaders import PyPDFLoader
 from langchain_text_splitters import RecursiveCharacterTextSplitter
-from langchain_core.documents import Document
 
-import os
-import glob
+from pdf_metadata import extract_chapter_map
 
 
 MATERIALS_FOLDER = "./materials"
-DB_PATH = "./chroma_dp"
+DB_PATH = "./chroma_chapters"
+
+CHUNK_SIZE = 2500
+CHUNK_OVERLAP = 250
+ADD_START_INDEX = True
+EMBEDDING_BATCH_SIZE = 16
 
 
-add_documents = not os.path.exists(DB_PATH)
-
-
-embeddings = OllamaEmbeddings(model="mxbai-embed-large")
+embeddings = OllamaEmbeddings(
+    model="mxbai-embed-large"
+)
 
 vector_store = Chroma(
-        collection_name="study_materials",
-        persist_directory=DB_PATH,
-        embedding_function=embeddings
-    )
+    collection_name="study_materials",
+    persist_directory=DB_PATH,
+    embedding_function=embeddings
+)
 
+def initialize_database():
 
-# --------------------------------------------------
-# Load PDFs
-# --------------------------------------------------
-if add_documents:
+    # Check individual IDs so interrupted indexing can resume safely.
+    existing_ids = set(vector_store.get(include=[])["ids"])
 
-    print("Adding documents to database...")
+    print("Checking for documents to index...")
 
     documents = []
 
-    # Find every PDF in materials/
-    pdf_files = glob.glob(
-        os.path.join(MATERIALS_FOLDER, "*.pdf")
-    )
-
-
-    ## variante-1:
-    # pdf_splitter = RecursiveCharacterTextSplitter(
-    #     chunk_size=2500,
-    #     chunk_overlap=250,
-    #     add_start_index=True,
-    #     separators=["\nINT.", "\nEXT.", "\n\n", "\n", " ", ""]
-    # )
-
-    # for pdf_file in pdf_files:
-    #     pdf_doc = Document(pdf_file)
-    #     pdf_chunks = pdf_splitter.split_documents([pdf_doc])
-    #     documents.extend(pdf_chunks)
-    #     print(
-    #             f"Loaded and split pdf {pdf_file} into {len(pdf_chunks)} chunks."
-    #         )
-
-        
-    ## variante-2:
+    pdf_files = sorted(
+        glob.glob(os.path.join(MATERIALS_FOLDER, "*.pdf")))
 
     text_splitter = RecursiveCharacterTextSplitter(
-        chunk_size=2500,
-        chunk_overlap=250,
-        add_start_index=True
-    )
+        chunk_size=CHUNK_SIZE,
+        chunk_overlap=CHUNK_OVERLAP,
+        add_start_index=ADD_START_INDEX)
 
     for pdf_file in pdf_files:
         print(f"Loading: {pdf_file}")
+
+        # Extract chapter structure
+        chapter_map = extract_chapter_map(pdf_file)
+
+        # Load PDF pages
         loader = PyPDFLoader(pdf_file)
-        # PyPDFLoader normally creates one Document per PDF page
         pdf_pages = loader.load()
 
-        # split extracted PDF text into chunks:
+        # Attach metadata
+        for page in pdf_pages:
+            page_number = page.metadata["page"] + 1
+            info = chapter_map.get(page_number, {})
+            page.metadata.update({
+                "source": os.path.basename(pdf_file),
+                "page_number": page_number,
+                "chapter": info.get("chapter", "Unknown Chapter"),
+                "section": info.get("section", "Unknown Section"),
+                "section_path": info.get("section_path", "Unknown")})
+
+        # Split documents
         pdf_chunks = text_splitter.split_documents(pdf_pages)
-        documents.extend(pdf_chunks)
 
-        print(
-            f"Loaded and split {pdf_file} "
-            f"into {len(pdf_chunks)} chunks."
+        # Add stable chunk identifiers
+        for chunk in pdf_chunks:
+            metadata = chunk.metadata
+            chunk_key = (
+                f"{metadata['source']}:"
+                f"{metadata['page_number']}:"
+                f"{metadata.get('start_index', 0)}:"
+                f"{chunk.page_content}")
+
+            chunk_id = hashlib.sha256(chunk_key.encode("utf-8")).hexdigest()
+            metadata["chunk_id"] = chunk_id
+
+        for chunk in pdf_chunks:
+            chunk_id = chunk.metadata["chunk_id"]
+            if chunk_id not in existing_ids:
+                documents.append(chunk)
+                existing_ids.add(chunk_id)
+        print(f"Loaded and split {pdf_file} into {len(pdf_chunks)} chunks.")
+
+    if not documents:
+        print("No new documents to add.")
+        return
+
+    # Limit each Ollama request instead of embedding the entire library at once.
+    for start in range(0, len(documents), EMBEDDING_BATCH_SIZE):
+        batch = documents[start:start + EMBEDDING_BATCH_SIZE]
+        vector_store.add_documents(
+            documents=batch,
+            ids=[doc.metadata["chunk_id"] for doc in batch]
         )
+        print(f"Indexed {min(start + EMBEDDING_BATCH_SIZE, len(documents))}/{len(documents)} new chunks.")
 
-
-    vector_store.add_documents(documents=documents)
     print("Documents added to database.")
 
-else:
-    print("Database already exists. Skipping document loading.")
+initialize_database()
 
 retriever = vector_store.as_retriever(
-    search_kwargs={"k":5}
+    search_kwargs={"k": 5}
 )
