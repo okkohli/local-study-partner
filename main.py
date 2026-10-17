@@ -14,6 +14,8 @@ def build_chain():
     template = """
         You are an technical expert. Use ONLY the following script excerpts to answer.
         If you recognize a formular, give the answer in LaTeX format.
+        When mathematical formulas in LaTeX, use $...$ for inline formulas, 
+        and $$...$$ for equations on separate lines. Do not put formulas inside code blocks.
         If the answer isn't in the context, say "There is no information about this in the original Study scripts."
 
         Context:
