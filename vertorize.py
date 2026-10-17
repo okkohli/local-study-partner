@@ -24,6 +24,9 @@ embeddings = OllamaEmbeddings(
     model="mxbai-embed-large"
 )
 
+# Check before Chroma creates its database files, even for an empty collection.
+database_exists = os.path.isdir(DB_PATH) and bool(os.listdir(DB_PATH))
+
 vector_store = Chroma(
     collection_name="study_materials",
     persist_directory=DB_PATH,
@@ -32,15 +35,17 @@ vector_store = Chroma(
 
 def initialize_database():
 
-    # Check individual IDs so interrupted indexing can resume safely.
-    existing_ids = set(vector_store.get(include=[])["ids"])
+    if database_exists:
+        print(f"Database folder is not empty: {DB_PATH}. Skipping PDF processing.")
+        return
+
+    existing_ids = set()
 
     print("Checking for documents to index...")
 
     documents = []
 
-    pdf_files = sorted(
-        glob.glob(os.path.join(MATERIALS_FOLDER, "*.pdf")))
+    pdf_files = sorted(glob.glob(os.path.join(MATERIALS_FOLDER, "*.pdf")))
 
     text_splitter = RecursiveCharacterTextSplitter(
         chunk_size=CHUNK_SIZE,
@@ -50,7 +55,7 @@ def initialize_database():
     for pdf_file in pdf_files:
         print(f"Loading: {pdf_file}")
 
-        # Extract chapter structure
+        # Extract chapter structure from pdf
         chapter_map = extract_chapter_map(pdf_file)
 
         # Load PDF pages
@@ -108,5 +113,5 @@ def initialize_database():
 initialize_database()
 
 retriever = vector_store.as_retriever(
-    search_kwargs={"k": 5}
+    search_kwargs={"k": 3}
 )
